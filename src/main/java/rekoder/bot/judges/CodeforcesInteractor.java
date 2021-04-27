@@ -6,11 +6,11 @@ import org.jsoup.nodes.Element;
 import rekoder.primitive.Problem;
 
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.util.List;
 
 public class CodeforcesInteractor implements JudgeInteractor {
-    @Override
     public String getName() {
         return "Codeforces";
     }
@@ -52,7 +52,7 @@ public class CodeforcesInteractor implements JudgeInteractor {
     }
 
     @Override
-    public List<String> getProblemsInInterval(DateFormat begin, DateFormat end) {
-        return null;
+    public List<String> getProblemUrlsInInterval(Timestamp begin, Timestamp end) {
+        throw new UnsupportedOperationException();
     }
 }
