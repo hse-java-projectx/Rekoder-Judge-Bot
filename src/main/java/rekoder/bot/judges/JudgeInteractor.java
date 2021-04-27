@@ -1,27 +1,45 @@
 package rekoder.bot.judges;
 
 import rekoder.primitive.Problem;
+import rekoder.util.UnsupportedPageFormat;
+import rekoder.util.Util;
 
 import java.io.IOException;
-import java.sql.Timestamp;
-import java.text.DateFormat;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-public interface JudgeInteractor {
-    String getName();
+public abstract class JudgeInteractor {
+    protected final Logger logger;
+    private final String name;
 
-    List<Problem> getAllProblems();
+    public JudgeInteractor(Logger logger, String name) {
+        this.logger = logger;
+        this.name = name;
+    }
 
-    Problem getProblemByUrl(String url) throws IOException;
+    public String getName() {
+        return name;
+    }
 
-    List<String> getProblemUrlsInInterval(Timestamp begin, Timestamp end);
+    public List<Problem> getAllProblems() throws IOException {
+        return getProblemsInInterval(LocalDateTime.MIN, LocalDateTime.MAX);
+    }
 
-    default List<Problem> getProblemsInInterval(Timestamp begin, Timestamp end) throws IOException {
+    public abstract Problem getProblemByUrl(String url) throws IOException, UnsupportedPageFormat;
+
+    public abstract List<String> getProblemUrlsInInterval(LocalDateTime begin, LocalDateTime end) throws IOException;
+
+    public List<Problem> getProblemsInInterval(LocalDateTime begin, LocalDateTime end) throws IOException {
         final List<Problem> problems = new ArrayList<>();
         for (String url : getProblemUrlsInInterval(begin, end)) {
-            problems.add(getProblemByUrl(url));
+            try {
+                problems.add(getProblemByUrl(url));
+            } catch (UnsupportedPageFormat e) {
+                logger.log(Level.INFO, String.format("Problem page format is not supported: %s", Util.formatThrowable(e)));
+            }
         }
         return problems;
     }

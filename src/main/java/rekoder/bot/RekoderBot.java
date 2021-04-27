@@ -9,9 +9,9 @@ import rekoder.bot.judges.DummyJudgeInteractor;
 import rekoder.bot.judges.JudgeInteractor;
 import rekoder.bot.judges.LeetcodeInteractor;
 import rekoder.primitive.Problem;
+import rekoder.util.Util;
 
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
@@ -29,9 +29,9 @@ public class RekoderBot implements Runnable {
     public static void main(String[] args) {
         var bot = new RekoderBot(
                 List.of(
-                        new CodeforcesInteractor(),
-                        new LeetcodeInteractor(),
-                        new DummyJudgeInteractor()
+                        new CodeforcesInteractor(Logger.getGlobal()),
+                        new LeetcodeInteractor(Logger.getGlobal()),
+                        new DummyJudgeInteractor(Logger.getGlobal())
                 ),
                 new RekoderApiImplOffline(Logger.getGlobal()),
                 Logger.getGlobal());
@@ -157,12 +157,12 @@ public class RekoderBot implements Runnable {
                 return new ResultOrError<>(Level.INFO, "Judge does not exist: '" + judgeName + "'");
             }
             JudgeInteractor interactor = interactors.get(judgeName).interactor;
-            Timestamp lastUpdate = interactors.get(judgeName).lastUpdate;
+            LocalDateTime lastUpdate = interactors.get(judgeName).lastUpdate;
             assert interactors.get(judgeName) != null;
 
             tasks.add(() -> {
                 try {
-                    Timestamp curTime = Timestamp.valueOf(LocalDateTime.now());
+                    LocalDateTime curTime = LocalDateTime.now();
                     List<Problem> problemList = interactor.getProblemsInInterval(lastUpdate, curTime);
                     interactors.get(judgeName).update(curTime);
                     problemList.forEach(problem -> tasks.add(() -> {
@@ -171,7 +171,7 @@ public class RekoderBot implements Runnable {
                         }
                     }));
                 } catch (IOException e) {
-                    logger.log(Level.WARNING, String.format("Update was not successful: %s", e.getMessage()));
+                    logger.log(Level.WARNING, String.format("Update was not successful: %s", Util.formatThrowable(e)));
                 } catch (UnsupportedOperationException e) {
                     logger.log(
                             Level.INFO,
@@ -198,20 +198,20 @@ public class RekoderBot implements Runnable {
     }
 
     private static class JudgeInteractorWrapper {
-        public Timestamp lastUpdate;
+        public LocalDateTime lastUpdate;
         public final JudgeInteractor interactor;
 
         public JudgeInteractorWrapper(JudgeInteractor interactor) {
-            this.lastUpdate = Timestamp.valueOf(LocalDateTime.MIN);
+            this.lastUpdate = LocalDateTime.MIN;
             this.interactor = interactor;
         }
 
-        public void update(Timestamp time) {
+        public void update(LocalDateTime time) {
             this.lastUpdate = time;
         }
 
         public String getUpdateString() {
-            if (lastUpdate.equals(Timestamp.valueOf(LocalDateTime.MIN))) {
+            if (lastUpdate.equals(LocalDateTime.MIN)) {
                 return "never";
             }
             return lastUpdate.toString();

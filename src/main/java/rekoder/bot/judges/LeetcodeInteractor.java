@@ -3,14 +3,13 @@ package rekoder.bot.judges;
 import rekoder.primitive.Problem;
 
 import java.io.IOException;
-import java.sql.Timestamp;
-import java.text.DateFormat;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.logging.Logger;
 
-public class LeetcodeInteractor implements JudgeInteractor {
-    @Override
-    public String getName() {
-        return "Leetcode";
+public class LeetcodeInteractor extends JudgeInteractor {
+    public LeetcodeInteractor(Logger logger) {
+        super(logger, "Leetcode");
     }
 
     @Override
@@ -19,12 +18,12 @@ public class LeetcodeInteractor implements JudgeInteractor {
     }
 
     @Override
-    public Problem getProblemByUrl(String url) throws IOException {
+    public Problem getProblemByUrl(String url) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public List<String> getProblemUrlsInInterval(Timestamp begin, Timestamp end) {
+    public List<String> getProblemUrlsInInterval(LocalDateTime begin, LocalDateTime end) {
         throw new UnsupportedOperationException();
     }
 }
