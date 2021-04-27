@@ -1,9 +1,0 @@
-steps:
-- name: update
-  entrypoint: apt
-  args: ["update"]
-- name: compile
-  entrypoint: mvn
-  args: ["compile"]
-
-timeout: "1600s"
