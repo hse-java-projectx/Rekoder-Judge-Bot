@@ -2,8 +2,14 @@ package rekoder.api;
 
 import rekoder.primitive.Problem;
 
-import java.util.function.Consumer;
+import java.io.IOException;
 
 public interface RekoderApi {
-    void addProblem(Problem problem, Consumer<String> callback);
+    int addProblem(String user, Problem problem) throws IOException;
+
+    void putProblem(int folderId, int problemId) throws IOException;
+
+    int addFolder(int parentFolder, String name) throws IOException;
+
+    int getUserRootFolderId(String user) throws IOException;
 }

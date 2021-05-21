@@ -12,6 +12,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public abstract class JudgeInteractor {
+    public static int NO_LIMIT = -1;
+
     protected final Logger logger;
     private final String name;
 
@@ -25,16 +27,16 @@ public abstract class JudgeInteractor {
     }
 
     public List<Problem> getAllProblems() throws IOException {
-        return getProblemsInInterval(LocalDateTime.MIN, LocalDateTime.MAX);
+        return getProblemsInInterval(LocalDateTime.MIN, LocalDateTime.MAX, NO_LIMIT);
     }
 
     public abstract Problem getProblemByUrl(String url) throws IOException, UnsupportedPageFormat;
 
-    public abstract List<String> getProblemUrlsInInterval(LocalDateTime begin, LocalDateTime end) throws IOException;
+    public abstract List<String> getProblemUrlsInInterval(LocalDateTime begin, LocalDateTime end, int limit) throws IOException;
 
-    public List<Problem> getProblemsInInterval(LocalDateTime begin, LocalDateTime end) throws IOException {
+    public List<Problem> getProblemsInInterval(LocalDateTime begin, LocalDateTime end, int limit) throws IOException {
         final List<Problem> problems = new ArrayList<>();
-        for (String url : getProblemUrlsInInterval(begin, end)) {
+        for (String url : getProblemUrlsInInterval(begin, end, limit)) {
             try {
                 problems.add(getProblemByUrl(url));
             } catch (UnsupportedPageFormat e) {

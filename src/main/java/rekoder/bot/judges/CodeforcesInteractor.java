@@ -4,7 +4,7 @@ import org.json.JSONException;
 import org.jsoup.*;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import rekoder.primitive.Problem;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.URL;
@@ -13,11 +13,14 @@ import java.time.ZoneOffset;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
-import org.json.JSONObject;
+import rekoder.primitive.Problem;
 import rekoder.util.HttpRequestAttemptOverflow;
 import rekoder.util.UnsupportedPageFormat;
 import rekoder.util.Util;
+
+import static rekoder.util.Util.checkNotNullOrThrowFormat;
 
 public class CodeforcesInteractor extends JudgeInteractor {
     public static final int GET_PROBLEM_BY_URL_ATTEMPTS = 3;
@@ -25,6 +28,16 @@ public class CodeforcesInteractor extends JudgeInteractor {
 
     public CodeforcesInteractor(Logger logger) {
         super(logger, "Codeforces");
+    }
+
+    public static void main(String[] args) {
+        JudgeInteractor interactor = new CodeforcesInteractor(Logger.getGlobal());
+        try {
+            Problem p = interactor.getProblemByUrl("https://codeforces.com/contest/1527/problem/E");
+            System.out.println(p);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -66,21 +79,58 @@ public class CodeforcesInteractor extends JudgeInteractor {
                 .findAny()
                 .orElse(null);
         checkNotNullOrThrowFormat(problemStatement);
-        logger.log(Level.INFO, "Got problem from codeforces: " + problemName);
-        return new Problem(problemName, problemStatement.text());
-    }
+        Element problemInputFormatElement = statement.getElementsByClass("input-specification")
+                .stream()
+                .findAny()
+                .orElse(null);
+        checkNotNullOrThrowFormat(problemInputFormatElement);
+        String inputFormat = problemInputFormatElement.html()
+                .chars()
+                .skip(42)
+                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                .toString();
+        Element problemOutputFormat = statement.getElementsByClass("output-specification")
+                .stream()
+                .findAny()
+                .orElse(null);
+        checkNotNullOrThrowFormat(problemOutputFormat);
+        String outputFormat = problemOutputFormat.html()
+                .chars()
+                .skip(43)
+                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                .toString();
+        List<String> inputs = document.getElementsByClass("sample-test")
+                .stream()
+                .flatMap(element -> element.getElementsByClass("input").stream())
+                .map(e -> e.getElementsByTag("pre").stream().findAny().orElseThrow().html())
+                .collect(Collectors.toList());
+        List<String> outputs = document.getElementsByClass("sample-test")
+                .stream()
+                .flatMap(element -> element.getElementsByClass("output").stream())
+                .map(e -> e.getElementsByTag("pre").stream().findAny().orElseThrow().html())
+                .collect(Collectors.toList());
 
-    public static void main(String[] args) {
-        JudgeInteractor cf = new CodeforcesInteractor(Logger.getGlobal());
-        try {
-            System.out.println(cf.getProblemByUrl("https://codeforces.com/contest/949/problem/F"));
-        } catch (IOException | UnsupportedPageFormat e) {
-            e.printStackTrace();
+        if (inputs.size() != outputs.size()) {
+            throw new UnsupportedPageFormat("Unsupported page format");
         }
+
+        List<Problem.Test> examples = new ArrayList<>();
+        for (int i = 0; i < inputs.size(); i++) {
+            examples.add(new Problem.Test(inputs.get(i), outputs.get(i)));
+        }
+
+        Element contestNameElement = document.getElementsByTag("th").stream().limit(1).findAny().orElse(null);
+        checkNotNullOrThrowFormat(contestNameElement);
+        contestNameElement = contestNameElement.getElementsByTag("a").stream().findAny().orElse(null);
+        checkNotNullOrThrowFormat(contestNameElement);
+        String contestName = contestNameElement.text();
+
+        logger.log(Level.INFO, "Got problem from codeforces: " + problemName);
+        return new Problem(problemName, problemStatement.html(), inputFormat, outputFormat, examples, contestName);
     }
 
     @Override
-    public List<String> getProblemUrlsInInterval(LocalDateTime begin, LocalDateTime end) throws IOException {
+    public List<String> getProblemUrlsInInterval(LocalDateTime begin, LocalDateTime end, int limit) throws IOException {
         final Map<Long, LocalDateTime> contestStartTime = new HashMap<>();
         JSONObject contestsResponse;
         try {
@@ -133,6 +183,9 @@ public class CodeforcesInteractor extends JudgeInteractor {
                     continue;
                 }
                 String problemIndex = problemJson.getString("index");
+                if (limit != NO_LIMIT && problemUrls.size() == limit) {
+                    break;
+                }
                 problemUrls.add(String.format("https://codeforces.com/contest/%d/problem/%s", problemSourceContestId, problemIndex));
             } catch (JSONException ignored) {
             }
@@ -140,11 +193,5 @@ public class CodeforcesInteractor extends JudgeInteractor {
 
         logger.log(Level.INFO, String.format("Got %d new problems from Codeforces", problemUrls.size()));
         return problemUrls;
-    }
-
-    private void checkNotNullOrThrowFormat(Object o) throws UnsupportedPageFormat {
-        if (o == null) {
-            throw new UnsupportedPageFormat("Unsupported page format");
-        }
     }
 }

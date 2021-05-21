@@ -2,7 +2,6 @@ package rekoder.bot.judges;
 
 import rekoder.primitive.Problem;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.logging.Logger;
@@ -19,11 +18,11 @@ public class DummyJudgeInteractor extends JudgeInteractor {
 
     @Override
     public Problem getProblemByUrl(String url) {
-        return new Problem(url, "Statement dummy placeholder");
+        return new Problem(url, "Statement dummy placeholder", "Dummy input format", "Dummy output format", List.of(), null);
     }
 
     @Override
-    public List<String> getProblemUrlsInInterval(LocalDateTime begin, LocalDateTime end) {
+    public List<String> getProblemUrlsInInterval(LocalDateTime begin, LocalDateTime end, int limit) {
         return List.of("url1", "url2", "url3", "url4");
     }
 }

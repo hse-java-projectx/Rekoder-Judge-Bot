@@ -2,7 +2,7 @@ package rekoder.bot;
 
 import rekoder.ResultOrError;
 import rekoder.api.RekoderApi;
-import rekoder.api.RekoderApiImplOffline;
+import rekoder.api.RekoderApiOnline;
 import rekoder.bot.cli.CommandLineInterface;
 import rekoder.bot.judges.CodeforcesInteractor;
 import rekoder.bot.judges.DummyJudgeInteractor;
@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -23,8 +24,9 @@ import java.util.stream.Collectors;
 public class RekoderBot implements Runnable {
     private final Map<String, JudgeInteractorWrapper> interactors;
     private final BlockingQueue<Runnable> tasks = new LinkedBlockingDeque<>();
-    private final RekoderApi api;
+    private final Supplier<RekoderApi> apiSupplier;
     private final Logger logger;
+    private final int PROBLEMS_LIMIT = 1200;
 
     public static void main(String[] args) {
         var bot = new RekoderBot(
@@ -33,13 +35,13 @@ public class RekoderBot implements Runnable {
                         new LeetcodeInteractor(Logger.getGlobal()),
                         new DummyJudgeInteractor(Logger.getGlobal())
                 ),
-                new RekoderApiImplOffline(Logger.getGlobal()),
+                () -> new RekoderApiOnline(Logger.getGlobal()),
                 Logger.getGlobal());
         bot.run();
     }
 
-    public RekoderBot(List<JudgeInteractor> interactors, RekoderApi api, Logger logger) {
-        this.api = api;
+    public RekoderBot(List<JudgeInteractor> interactors, Supplier<RekoderApi> apiSupplier, Logger logger) {
+        this.apiSupplier = apiSupplier;
         this.logger = logger;
         this.interactors = new HashMap<>();
         for (JudgeInteractor interactor : interactors) {
@@ -163,13 +165,70 @@ public class RekoderBot implements Runnable {
             tasks.add(() -> {
                 try {
                     LocalDateTime curTime = LocalDateTime.now();
-                    List<Problem> problemList = interactor.getProblemsInInterval(lastUpdate, curTime);
+                    List<Problem> problemList = interactor.getProblemsInInterval(lastUpdate, curTime, PROBLEMS_LIMIT);
                     interactors.get(judgeName).update(curTime);
-                    problemList.forEach(problem -> tasks.add(() -> {
-                        synchronized (api) {
-                            api.addProblem(problem, getErrorLoggingCallback());
+
+                    final String localJudgeName = "TestUser17";
+
+                    RekoderApi api = apiSupplier.get();
+                    int judgeRootId = api.getUserRootFolderId(localJudgeName);
+
+                    Set<String> allContests = problemList.stream()
+                            .flatMap(problem -> Optional.ofNullable(problem.contest).stream())
+                            .collect(Collectors.toUnmodifiableSet());
+                    Map<String, Integer> folderId = new ConcurrentHashMap<>();
+                    {
+                        List<Runnable> addFolderTasks = new ArrayList<>();
+                        for (String contestName : allContests) {
+                            addFolderTasks.add(() -> {
+                                try {
+                                    folderId.put(contestName, api.addFolder(judgeRootId, contestName));
+                                } catch (IOException e) {
+                                    logger.warning(String.format("Failed to add folder '%s' to %s. %s", contestName, judgeName, e));
+                                }
+                            });
                         }
-                    }));
+                        executeAllWithThreadPool(addFolderTasks);
+                    }
+
+                    Set<Problem> uniqueProblems = new HashSet<>(problemList);
+                    Map<Problem, Integer> problemId = new ConcurrentHashMap<>();
+                    {
+                        List<Runnable> addProblemTasks = new ArrayList<>();
+                        for (Problem uniqueProblem : uniqueProblems) {
+                            addProblemTasks.add(() -> {
+                                try {
+                                    problemId.put(uniqueProblem, api.addProblem(localJudgeName, uniqueProblem));
+                                } catch (IOException e) {
+                                    logger.warning(String.format("Failed to add problem %s to %s. %s", uniqueProblem.name, judgeName, e));
+                                }
+                            });
+                        }
+                        executeAllWithThreadPool(addProblemTasks);
+                    }
+
+                    {
+                        List<Runnable> putProblemTasks = new ArrayList<>();
+                        for (Problem problem : problemList) {
+                            putProblemTasks.add(() -> {
+                                if (problem.contest != null && !folderId.containsKey(problem.contest)) {
+                                    logger.warning(String.format("Failed to put problem %s to %s. Folder was not added",
+                                            problem.name,
+                                            problem.contest));
+                                } else {
+                                    int folderToAddProblemId = problem.contest == null
+                                            ? judgeRootId
+                                            : folderId.get(problem.contest);
+                                    try {
+                                        api.putProblem(folderToAddProblemId, problemId.get(problem));
+                                    } catch (IOException e) {
+                                        logger.warning(String.format("Failed to put problem %s to %d. %s", problem.name, judgeRootId, e));
+                                    }
+                                }
+                            });
+                        }
+                        executeAllWithThreadPool(putProblemTasks);
+                    }
                 } catch (IOException e) {
                     logger.log(Level.WARNING, String.format("Update was not successful: %s", Util.formatThrowable(e)));
                 } catch (UnsupportedOperationException e) {
@@ -194,6 +253,21 @@ public class RekoderBot implements Runnable {
         @Override
         public List<String> getParams() {
             return List.of("judge name");
+        }
+    }
+
+    private void executeAllWithThreadPool(List<Runnable> tasks) {
+        ExecutorService executorService = Executors.newFixedThreadPool(8);
+        List<Future<?>> futures = new ArrayList<>();
+        for (Runnable task : tasks) {
+            futures.add(executorService.submit(task));
+        }
+        for (Future<?> future : futures) {
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                logger.info("Future.get was interrupted");
+            }
         }
     }
 

@@ -19,15 +19,28 @@ public class RekoderApiImplOffline implements RekoderApi {
     }
 
     @Override
-    public void addProblem(Problem problem, Consumer<String> callback) {
-        try {
-            Files.createDirectories(Path.of("temp"));
-            Path outputFile = Paths.get("temp", problem.name);
-            Files.createFile(outputFile);
-            Files.write(outputFile, Collections.singleton(problem.statement));
-            logger.log(Level.INFO, String.format("Add offline problem: %s", problem.name));
-        } catch (IOException e) {
-            callback.accept(e.getMessage());
-        }
+    public int addProblem(String user, Problem problem) throws IOException {
+        Files.createDirectories(Path.of("temp"));
+        Path outputFile = Paths.get("temp", problem.name);
+        Files.createFile(outputFile);
+        Files.write(outputFile, Collections.singleton(problem.statement));
+        logger.log(Level.INFO, String.format("Add offline problem: %s", problem.name));
+        return 0;
+    }
+
+    @Override
+    public void putProblem(int folderId, int problemId) {
+
+    }
+
+    @Override
+    public int addFolder(int parentFolder, String name) throws IOException {
+        Files.createDirectories(Path.of(name));
+        return 0;
+    }
+
+    @Override
+    public int getUserRootFolderId(String user) {
+        return 0;
     }
 }

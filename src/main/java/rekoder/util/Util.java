@@ -33,4 +33,10 @@ public class Util {
         t.printStackTrace(pw);
         return String.format("message: %s\ntrace:\n%s", t.getMessage(), sw);
     }
+
+    public static void checkNotNullOrThrowFormat(Object o) throws UnsupportedPageFormat {
+        if (o == null) {
+            throw new UnsupportedPageFormat("Unsupported page format");
+        }
+    }
 }
