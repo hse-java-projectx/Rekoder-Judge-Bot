@@ -10,14 +10,16 @@ public class Problem {
     public final String outputFormat;
     public final List<Test> examples;
     public final String contest;
+    public final String url;
 
-    public Problem(String name, String statement, String inputFormat, String outputFormat, List<Test> examples, String contest) {
+    public Problem(String name, String statement, String inputFormat, String outputFormat, List<Test> examples, String contest, String url) {
         this.name = name;
         this.statement = statement;
         this.inputFormat = inputFormat;
         this.outputFormat = outputFormat;
         this.examples = examples;
         this.contest = contest;
+        this.url = url;
     }
 
     public static class Test {
@@ -36,7 +38,7 @@ public class Problem {
                 ^ this.statement.hashCode()
                 ^ this.inputFormat.hashCode()
                 ^ this.outputFormat.hashCode()
-                ^ this.examples.hashCode();
+                ^ this.examples.hashCode(); // TODO: should add contest and url to hashCode and equals?
     }
 
     @Override

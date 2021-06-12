@@ -18,7 +18,7 @@ public class DummyJudgeInteractor extends JudgeInteractor {
 
     @Override
     public Problem getProblemByUrl(String url) {
-        return new Problem(url, "Statement dummy placeholder", "Dummy input format", "Dummy output format", List.of(), null);
+        return new Problem(url, "Statement dummy placeholder", "Dummy input format", "Dummy output format", List.of(), null, null);
     }
 
     @Override

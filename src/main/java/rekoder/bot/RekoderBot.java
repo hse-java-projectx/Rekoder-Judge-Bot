@@ -168,7 +168,7 @@ public class RekoderBot implements Runnable {
                     List<Problem> problemList = interactor.getProblemsInInterval(lastUpdate, curTime, PROBLEMS_LIMIT);
                     interactors.get(judgeName).update(curTime);
 
-                    final String localJudgeName = "TestUser17";
+                    final String localJudgeName = "CF3";
 
                     RekoderApi api = apiSupplier.get();
                     int judgeRootId = api.getUserRootFolderId(localJudgeName);

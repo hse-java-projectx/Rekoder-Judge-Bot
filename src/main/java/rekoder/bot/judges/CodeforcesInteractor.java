@@ -126,7 +126,7 @@ public class CodeforcesInteractor extends JudgeInteractor {
         String contestName = contestNameElement.text();
 
         logger.log(Level.INFO, "Got problem from codeforces: " + problemName);
-        return new Problem(problemName, problemStatement.html(), inputFormat, outputFormat, examples, contestName);
+        return new Problem(problemName, problemStatement.html(), inputFormat, outputFormat, examples, contestName, url);
     }
 
     @Override

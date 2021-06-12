@@ -71,7 +71,7 @@ public class AtcoderInteractor extends JudgeInteractor {
                 .map(Element::html)
                 .collect(Collectors.joining("\n"));
 
-        return new Problem(problemName, problemStatement, "atcoder input format", "atcoder output format", List.of(), null);
+        return new Problem(problemName, problemStatement, "atcoder input format", "atcoder output format", List.of(), null, null);
     }
 
     @Override

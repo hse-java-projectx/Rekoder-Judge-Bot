@@ -25,15 +25,16 @@ public class RekoderApiOnline implements RekoderApi {
     public static void main(String[] args) {
         RekoderApi api = new RekoderApiOnline(Logger.getGlobal());
         try {
-            int id = api.addFolder(api.getUserRootFolderId("Glebanister"), "Hello from Java");
+            int id = api.addFolder(api.getUserRootFolderId("CF3"), "Hello from Java");
             api.addProblem(
-                    "Glebanister",
+                    "CF3",
                     new Problem(
                             "A + B Problem",
                             "Hello, dudes",
                             "input format",
                             "output format",
                             List.of(new Problem.Test("input1", "output1")),
+                            null,
                             null));
         } catch (IOException e) {
             e.printStackTrace();
@@ -47,6 +48,7 @@ public class RekoderApiOnline implements RekoderApi {
         problemJson.put("statement", problem.statement);
         problemJson.put("inputFormat", problem.inputFormat);
         problemJson.put("outputFormat", problem.outputFormat);
+        problemJson.put("problemUrl", problem.url);
         problemJson.put("tests", new JSONArray(problem.examples.stream().map(test -> new JSONObject(Map.of(
                 "input", test.input,
                 "output", test.output
@@ -65,6 +67,8 @@ public class RekoderApiOnline implements RekoderApi {
 
     @Override
     public int addFolder(int parentFolder, String name) throws IOException {
+        name = name.replaceAll(" ", "_"); // TODO: Will be changed in backend
+        name = name.replaceAll("[^a-zA-Z0-9_]", ""); // TODO: Will be changed in backend
         JSONObject addFolderJson = new JSONObject(Map.of("name", name));
         return new JSONObject(postJsonBody(ApiUrl.addFolder(parentFolder), addFolderJson.toString())).getInt("id");
     }
@@ -94,6 +98,7 @@ public class RekoderApiOnline implements RekoderApi {
             }
             request.setHeader("Accept", "application/json");
             request.setHeader("Content-type", "application/json");
+            request.setHeader("Authorization", "token"); // TODO: set correct token
             logger.info(String.format("API: request %s, body: %s", request, body));
             try (CloseableHttpResponse response = client.execute(request)) {
                 logger.info(String.format("API: response %s", response));
